@@ -98,6 +98,22 @@ class ARModule(
         lastPose = pose
     }
 
+    /** Resumes the ARCore session and rendering surface. */
+    fun resume() {
+        try {
+            session?.resume()
+        } catch (_: CameraNotAvailableException) {
+            // Ignored for brevity
+        }
+        surfaceView.onResume()
+    }
+
+    /** Pauses the rendering surface and ARCore session. */
+    fun pause() {
+        surfaceView.onPause()
+        session?.pause()
+    }
+
     private fun hasMovedAbruptly(newPose: Pose): Boolean {
         val prev = lastPose ?: return true
         val dx = newPose.tx() - prev.tx()
