@@ -21,7 +21,6 @@ import javax.microedition.khronos.opengles.GL10
  * allows placing simple markers based on model detections.
  */
 class ARModule(
-    context: Context,
     private val surfaceView: GLSurfaceView
 ) : GLSurfaceView.Renderer {
     private var session: Session? = null
@@ -32,6 +31,16 @@ class ARModule(
     private var lastPose: Pose? = null
 
     init {
+        surfaceView.setEGLContextClientVersion(3)
+        surfaceView.setRenderer(this)
+        surfaceView.renderMode = GLSurfaceView.RENDERMODE_CONTINUOUSLY
+    }
+
+    /**
+     * Lazily creates the ARCore [Session] if camera permissions were granted.
+     */
+    fun initializeIfPermitted(context: Context) {
+        if (session != null) return
         session = try {
             Session(context).apply {
                 val config = Config(this)
@@ -40,10 +49,6 @@ class ARModule(
         } catch (e: UnavailableException) {
             null
         }
-
-        surfaceView.setEGLContextClientVersion(3)
-        surfaceView.setRenderer(this)
-        surfaceView.renderMode = GLSurfaceView.RENDERMODE_CONTINUOUSLY
     }
 
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
