@@ -25,4 +25,7 @@ android {
 
 dependencies {
     // Add your app dependencies here
+    implementation "com.google.ar:core:1.39.0"
+    implementation "com.microsoft.onnxruntime:onnxruntime-android:1.19.0"
+    implementation "org.opencv:opencv-android:4.8.0"
 }
