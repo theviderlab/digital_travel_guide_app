@@ -81,10 +81,12 @@ class ARModule(
      * Markers are recomputed only when the camera pose changes drastically.
      */
     fun placeMarkers(detections: List<Detection>) {
-        val session = session ?: return
+        session ?: return
         val frame = frame ?: return
         val pose = frame.camera.pose
-        if (!hasMovedAbruptly(pose)) return
+        if (!hasMovedAbruptly(pose)) {
+            return
+        }
 
         anchors.forEach { it.anchor.detach() }
         anchors.clear()
