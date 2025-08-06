@@ -1,6 +1,7 @@
 package com.example.travelguide.ar
 
 import android.content.Context
+import android.opengl.GLES11Ext
 import android.opengl.GLES20
 import android.opengl.GLSurfaceView
 import android.opengl.Matrix
@@ -29,6 +30,8 @@ class ARModule(
     private var width = 0
     private var height = 0
     private var lastPose: Pose? = null
+    private val backgroundRenderer = BackgroundRenderer()
+    private var pendingResume = false
 
     init {
         surfaceView.setEGLContextClientVersion(3)
@@ -53,6 +56,18 @@ class ARModule(
 
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
         GLES20.glClearColor(0f, 0f, 0f, 1f)
+        backgroundRenderer.createOnGlThread()
+        val texId = backgroundRenderer.textureId
+        if (texId != -1) {
+            session?.setCameraTextureName(texId)
+            if (pendingResume) {
+                try {
+                    session?.resume()
+                } catch (_: CameraNotAvailableException) {
+                }
+                pendingResume = false
+            }
+        }
     }
 
     override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {
@@ -107,12 +122,17 @@ class ARModule(
 
     /** Resumes the ARCore session and rendering surface. */
     fun resume() {
-        try {
-            session?.resume()
-        } catch (_: CameraNotAvailableException) {
-            // Ignored for brevity
-        }
         surfaceView.onResume()
+        val texId = backgroundRenderer.textureId
+        if (texId != -1) {
+            try {
+                session?.resume()
+            } catch (_: CameraNotAvailableException) {
+                // Ignored for brevity
+            }
+        } else {
+            pendingResume = true
+        }
     }
 
     /** Pauses the rendering surface and ARCore session. */
