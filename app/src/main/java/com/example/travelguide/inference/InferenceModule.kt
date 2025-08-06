@@ -12,6 +12,7 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.FloatBuffer
 import kotlin.math.min
+import androidx.core.graphics.get
 
 /**
  * Loads an ONNX model from assets and provides image inference utilities.
@@ -68,13 +69,13 @@ class InferenceModule(context: Context) {
         val ortSession = session ?: return emptyList()
         val embeddings = placesDbTensor ?: return emptyList()
 
-        val width = bitmap.width
-        val height = bitmap.height
+        val width: Int = bitmap.width
+        val height: Int = bitmap.height
         val buffer = ByteBuffer.allocateDirect(3 * width * height)
             .order(ByteOrder.nativeOrder())
         for (y in 0 until height) {
             for (x in 0 until width) {
-                val pixel = bitmap.getPixel(x, y)
+                val pixel = bitmap[x, y]
                 buffer.put((pixel and 0xFF).toByte())
                 buffer.put(((pixel shr 8) and 0xFF).toByte())
                 buffer.put(((pixel shr 16) and 0xFF).toByte())
@@ -99,7 +100,7 @@ class InferenceModule(context: Context) {
                 )
             ).use { result ->
                 val boxes = result[0].value as Array<FloatArray>
-                val classes = result[2].value as FloatArray
+                val classes = result[2].value as LongArray
 
                 val count = min(boxes.size, classes.size)
                 val detections = mutableListOf<Detection>()
