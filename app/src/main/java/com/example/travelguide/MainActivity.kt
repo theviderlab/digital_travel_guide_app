@@ -37,6 +37,7 @@ class MainActivity : ComponentActivity() {
             == PackageManager.PERMISSION_GRANTED
         ) {
             arModule.initializeIfPermitted(this)
+            arModule.resume()
             cameraModule.startCamera()
         } else {
             ActivityCompat.requestPermissions(
@@ -45,13 +46,12 @@ class MainActivity : ComponentActivity() {
                 CameraModule.REQUEST_CODE_CAMERA_PERMISSION
             )
         }
-        arModule.resume()
     }
 
     override fun onPause() {
         super.onPause()
-        cameraModule.stopCamera()
         arModule.pause()
+        cameraModule.stopCamera()
     }
 
     override fun onRequestPermissionsResult(
