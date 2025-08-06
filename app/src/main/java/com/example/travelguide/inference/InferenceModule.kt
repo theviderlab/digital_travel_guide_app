@@ -30,10 +30,17 @@ class InferenceModule(context: Context) {
     init {
         placesDbTensor = try {
             val bytes = context.assets.open("places_db.bin").use { it.readBytes() }
-            val floatBuffer = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer()
-            val floats = FloatArray(floatBuffer.remaining())
+            val buffer = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
+            val rows = buffer.int
+            val cols = buffer.int
+            val expected = rows * cols
+            val floatBuffer = buffer.asFloatBuffer()
+            if (floatBuffer.remaining() != expected) {
+                throw IllegalStateException("Invalid data length: expected $expected but was ${floatBuffer.remaining()}")
+            }
+            val floats = FloatArray(expected)
             floatBuffer.get(floats)
-            OnnxTensor.createTensor(env, FloatBuffer.wrap(floats), longArrayOf(floats.size.toLong()))
+            OnnxTensor.createTensor(env, FloatBuffer.wrap(floats), longArrayOf(rows.toLong(), cols.toLong()))
         } catch (e: Exception) {
             null
         }
