@@ -6,6 +6,9 @@ import android.graphics.Rect
 import ai.onnxruntime.OnnxTensor
 import ai.onnxruntime.OrtEnvironment
 import ai.onnxruntime.OrtSession
+import org.json.JSONObject
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import java.nio.FloatBuffer
 import kotlin.math.min
 
@@ -19,6 +22,35 @@ class InferenceModule(context: Context) {
         env.createSession(model)
     } catch (e: Exception) {
         null
+    }
+    private val placesDbTensor: OnnxTensor?
+    private val labelMap: Map<Int, String>
+
+    init {
+        placesDbTensor = try {
+            val bytes = context.assets.open("places_db.bin").use { it.readBytes() }
+            val floatBuffer = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer()
+            val floats = FloatArray(floatBuffer.remaining())
+            floatBuffer.get(floats)
+            OnnxTensor.createTensor(env, FloatBuffer.wrap(floats), longArrayOf(floats.size.toLong()))
+        } catch (e: Exception) {
+            null
+        }
+
+        labelMap = try {
+            context.assets.open("label_map.json").use { stream ->
+                val json = JSONObject(String(stream.readBytes()))
+                val map = mutableMapOf<Int, String>()
+                val keys = json.keys()
+                while (keys.hasNext()) {
+                    val key = keys.next()
+                    map[key.toInt()] = json.getString(key)
+                }
+                map
+            }
+        } catch (e: Exception) {
+            emptyMap()
+        }
     }
 
     /**
@@ -61,8 +93,9 @@ class InferenceModule(context: Context) {
                         (b[2] * width).toInt(),
                         (b[3] * height).toInt()
                     )
+                    val label = labelMap[classes[i].toInt()] ?: classes[i].toInt().toString()
                     detections.add(
-                        Detection(rect, classes[i].toInt().toString(), scores[i])
+                        Detection(rect, label, scores[i])
                     )
                 }
                 return detections
