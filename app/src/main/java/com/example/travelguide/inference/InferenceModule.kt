@@ -58,6 +58,7 @@ class InferenceModule(context: Context) {
      */
     fun runInference(bitmap: Bitmap): List<Detection> {
         val ortSession = session ?: return emptyList()
+        val embeddings = placesDbTensor ?: return emptyList()
 
         val width = bitmap.width
         val height = bitmap.height
@@ -72,18 +73,27 @@ class InferenceModule(context: Context) {
             }
         }
 
-        val inputName = ortSession.inputNames.iterator().next()
+        val inputNames = ortSession.inputNames.iterator()
+        if (!inputNames.hasNext()) return emptyList()
+        val imageInput = inputNames.next()
+        if (!inputNames.hasNext()) return emptyList()
+        val embeddingInput = inputNames.next()
+
         OnnxTensor.createTensor(
             env,
             FloatBuffer.wrap(inputData),
             longArrayOf(1, 3, height.toLong(), width.toLong())
         ).use { tensor ->
-            ortSession.run(mapOf(inputName to tensor)).use { result ->
+            ortSession.run(
+                mapOf(
+                    imageInput to tensor,
+                    embeddingInput to embeddings
+                )
+            ).use { result ->
                 val boxes = result[0].value as Array<FloatArray>
-                val scores = result[1].value as FloatArray
                 val classes = result[2].value as FloatArray
 
-                val count = min(boxes.size, min(scores.size, classes.size))
+                val count = min(boxes.size, classes.size)
                 val detections = mutableListOf<Detection>()
                 for (i in 0 until count) {
                     val b = boxes[i]
@@ -94,9 +104,7 @@ class InferenceModule(context: Context) {
                         (b[3] * height).toInt()
                     )
                     val label = labelMap[classes[i].toInt()] ?: classes[i].toInt().toString()
-                    detections.add(
-                        Detection(rect, label, scores[i])
-                    )
+                    detections.add(Detection(rect, label))
                 }
                 return detections
             }
@@ -105,4 +113,4 @@ class InferenceModule(context: Context) {
 }
 
 /** Data class describing a single model detection. */
-data class Detection(val box: Rect, val label: String, val score: Float)
+data class Detection(val box: Rect, val label: String)
