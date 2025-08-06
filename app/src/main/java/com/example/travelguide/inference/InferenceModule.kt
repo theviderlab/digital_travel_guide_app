@@ -68,28 +68,26 @@ class InferenceModule(context: Context) {
         for (y in 0 until height) {
             for (x in 0 until width) {
                 val pixel = bitmap.getPixel(x, y)
-                buffer.put(((pixel shr 16) and 0xFF).toByte())
-                buffer.put(((pixel shr 8) and 0xFF).toByte())
                 buffer.put((pixel and 0xFF).toByte())
+                buffer.put(((pixel shr 8) and 0xFF).toByte())
+                buffer.put(((pixel shr 16) and 0xFF).toByte())
             }
         }
         buffer.rewind()
 
-        val inputNames = ortSession.inputNames.iterator()
-        if (!inputNames.hasNext()) return emptyList()
-        val imageInput = inputNames.next()
-        if (!inputNames.hasNext()) return emptyList()
-        val embeddingInput = inputNames.next()
+        val inputNames = ortSession.inputNames
+        if (!inputNames.contains("image_bgr")) return emptyList()
+        val embeddingInput = inputNames.firstOrNull { it != "image_bgr" } ?: return emptyList()
 
         OnnxTensor.createTensor(
             env,
             buffer,
-            longArrayOf(1, 3, height.toLong(), width.toLong()),
+            longArrayOf(height.toLong(), width.toLong(), 3),
             OnnxJavaType.UINT8
         ).use { tensor ->
             ortSession.run(
                 mapOf(
-                    imageInput to tensor,
+                    "image_bgr" to tensor,
                     embeddingInput to embeddings
                 )
             ).use { result ->
