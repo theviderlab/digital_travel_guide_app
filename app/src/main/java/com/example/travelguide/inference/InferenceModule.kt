@@ -11,6 +11,7 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.FloatBuffer
 import kotlin.math.min
+import androidx.core.graphics.get
 
 /**
  * Loads an ONNX model from assets and provides image inference utilities.
@@ -66,7 +67,7 @@ class InferenceModule(context: Context) {
         var idx = 0
         for (y in 0 until height) {
             for (x in 0 until width) {
-                val pixel = bitmap.getPixel(x, y)
+                val pixel = bitmap[x, y]
                 inputData[idx++] = ((pixel shr 16) and 0xFF).toByte()
                 inputData[idx++] = ((pixel shr 8) and 0xFF).toByte()
                 inputData[idx++] = (pixel and 0xFF).toByte()
