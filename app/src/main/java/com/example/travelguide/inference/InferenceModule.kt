@@ -62,14 +62,14 @@ class InferenceModule(context: Context) {
 
         val width = bitmap.width
         val height = bitmap.height
-        val inputData = FloatArray(3 * width * height)
+        val inputData = ByteArray(3 * width * height)
         var idx = 0
         for (y in 0 until height) {
             for (x in 0 until width) {
                 val pixel = bitmap.getPixel(x, y)
-                inputData[idx++] = ((pixel shr 16) and 0xFF) / 255f
-                inputData[idx++] = ((pixel shr 8) and 0xFF) / 255f
-                inputData[idx++] = (pixel and 0xFF) / 255f
+                inputData[idx++] = ((pixel shr 16) and 0xFF).toByte()
+                inputData[idx++] = ((pixel shr 8) and 0xFF).toByte()
+                inputData[idx++] = (pixel and 0xFF).toByte()
             }
         }
 
@@ -79,9 +79,10 @@ class InferenceModule(context: Context) {
         if (!inputNames.hasNext()) return emptyList()
         val embeddingInput = inputNames.next()
 
+        val buffer = ByteBuffer.wrap(inputData).order(ByteOrder.nativeOrder())
         OnnxTensor.createTensor(
             env,
-            FloatBuffer.wrap(inputData),
+            buffer,
             longArrayOf(1, 3, height.toLong(), width.toLong())
         ).use { tensor ->
             ortSession.run(
