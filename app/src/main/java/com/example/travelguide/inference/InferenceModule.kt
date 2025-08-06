@@ -3,6 +3,7 @@ package com.example.travelguide.inference
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Rect
+import ai.onnxruntime.OnnxJavaType
 import ai.onnxruntime.OnnxTensor
 import ai.onnxruntime.OrtEnvironment
 import ai.onnxruntime.OrtSession
@@ -62,16 +63,17 @@ class InferenceModule(context: Context) {
 
         val width = bitmap.width
         val height = bitmap.height
-        val inputData = ByteArray(3 * width * height)
-        var idx = 0
+        val buffer = ByteBuffer.allocateDirect(3 * width * height)
+            .order(ByteOrder.nativeOrder())
         for (y in 0 until height) {
             for (x in 0 until width) {
                 val pixel = bitmap.getPixel(x, y)
-                inputData[idx++] = ((pixel shr 16) and 0xFF).toByte()
-                inputData[idx++] = ((pixel shr 8) and 0xFF).toByte()
-                inputData[idx++] = (pixel and 0xFF).toByte()
+                buffer.put(((pixel shr 16) and 0xFF).toByte())
+                buffer.put(((pixel shr 8) and 0xFF).toByte())
+                buffer.put((pixel and 0xFF).toByte())
             }
         }
+        buffer.rewind()
 
         val inputNames = ortSession.inputNames.iterator()
         if (!inputNames.hasNext()) return emptyList()
@@ -79,11 +81,11 @@ class InferenceModule(context: Context) {
         if (!inputNames.hasNext()) return emptyList()
         val embeddingInput = inputNames.next()
 
-        val buffer = ByteBuffer.wrap(inputData).order(ByteOrder.nativeOrder())
         OnnxTensor.createTensor(
             env,
             buffer,
-            longArrayOf(1, 3, height.toLong(), width.toLong())
+            longArrayOf(1, 3, height.toLong(), width.toLong()),
+            OnnxJavaType.UINT8
         ).use { tensor ->
             ortSession.run(
                 mapOf(
