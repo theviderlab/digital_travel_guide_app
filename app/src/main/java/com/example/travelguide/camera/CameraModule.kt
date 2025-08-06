@@ -24,10 +24,15 @@ class CameraModule(
 ) {
     private var cameraProvider: ProcessCameraProvider? = null
     private var imageAnalysis: ImageAnalysis? = null
-    private val cameraExecutor: ExecutorService = Executors.newSingleThreadExecutor()
+    // Executor used for image analysis; recreated as needed between start/stop cycles
+    private var cameraExecutor: ExecutorService = Executors.newSingleThreadExecutor()
 
     /** Starts the rear camera if permissions are granted. */
     fun startCamera() {
+        // Re-create the executor if it was previously shut down
+        if (cameraExecutor.isShutdown) {
+            cameraExecutor = Executors.newSingleThreadExecutor()
+        }
         if (ContextCompat.checkSelfPermission(activity, Manifest.permission.CAMERA)
             != PackageManager.PERMISSION_GRANTED
         ) {
@@ -49,10 +54,11 @@ class CameraModule(
     /** Binds an [ImageAnalysis] use case that throttles frames to ~1 fps. */
     private fun bindAnalysisUseCase() {
         val provider = cameraProvider ?: return
+        val executor = cameraExecutor
         imageAnalysis = ImageAnalysis.Builder()
             .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
             .build().also {
-                it.setAnalyzer(cameraExecutor, ThrottledAnalyzer(frameCallback))
+                it.setAnalyzer(executor, ThrottledAnalyzer(frameCallback))
             }
 
         try {
@@ -75,7 +81,9 @@ class CameraModule(
         } catch (e: Exception) {
             Log.e(TAG, "Error stopping camera", e)
         } finally {
-            cameraExecutor.shutdown()
+            if (!cameraExecutor.isShutdown) {
+                cameraExecutor.shutdown()
+            }
             cameraProvider = null
             imageAnalysis = null
         }
