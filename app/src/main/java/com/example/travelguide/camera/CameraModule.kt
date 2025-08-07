@@ -3,11 +3,9 @@ package com.example.travelguide.camera
 import android.Manifest
 import android.content.pm.PackageManager
 import android.hardware.camera2.CameraAccessException
-import android.hardware.camera2.CameraDevice
 import android.util.Log
 import android.os.Handler
 import android.os.Looper
-import android.os.ServiceSpecificException
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.core.app.ActivityCompat
@@ -78,12 +76,6 @@ class CameraModule(
             } else {
                 Log.e(TAG, "Failed to bind analysis use case", e)
             }
-        } catch (e: ServiceSpecificException) {
-            if (e.errorCode == CameraDevice.StateCallback.ERROR_CAMERA_DISCONNECTED) {
-                handleCameraDisconnected(e)
-            } else {
-                Log.e(TAG, "Failed to bind analysis use case", e)
-            }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to bind analysis use case", e)
         }
@@ -91,21 +83,12 @@ class CameraModule(
 
     /** Stops the camera and releases resources. */
     fun stopCamera() {
-        var restart = false
         try {
             imageAnalysis?.clearAnalyzer()
             cameraProvider?.unbindAll()
         } catch (e: CameraAccessException) {
             if (e.reason == CameraAccessException.CAMERA_DISCONNECTED) {
-                restart = true
-                Log.w(TAG, "Camera disconnected: ${e.message}")
-            } else {
-                Log.e(TAG, "Error stopping camera", e)
-            }
-        } catch (e: ServiceSpecificException) {
-            if (e.errorCode == CameraDevice.StateCallback.ERROR_CAMERA_DISCONNECTED) {
-                restart = true
-                Log.w(TAG, "Camera service disconnected: ${e.message}")
+                handleCameraDisconnected(e)
             } else {
                 Log.e(TAG, "Error stopping camera", e)
             }
@@ -117,9 +100,6 @@ class CameraModule(
             }
             cameraProvider = null
             imageAnalysis = null
-        }
-        if (restart) {
-            scheduleReconnect()
         }
     }
 
