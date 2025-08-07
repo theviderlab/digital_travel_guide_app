@@ -85,6 +85,7 @@ class ARModule(
             return
         }
         this.frame = frame
+        backgroundRenderer.draw(frame)
         val pose = frame.camera.pose
         if (hasMovedAbruptly(pose)) {
             lastPose = pose
