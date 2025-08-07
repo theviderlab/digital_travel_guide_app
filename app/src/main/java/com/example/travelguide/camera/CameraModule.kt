@@ -3,6 +3,7 @@ package com.example.travelguide.camera
 import android.Manifest
 import android.content.pm.PackageManager
 import android.hardware.camera2.CameraAccessException
+import android.hardware.camera2.CameraDevice
 import android.util.Log
 import android.os.Handler
 import android.os.Looper
@@ -14,6 +15,7 @@ import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
 import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.camera.camera2.interop.Camera2Interop
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
@@ -60,11 +62,25 @@ class CameraModule(
     private fun bindAnalysisUseCase() {
         val provider = cameraProvider ?: return
         val executor = cameraExecutor
-        imageAnalysis = ImageAnalysis.Builder()
+
+        val builder = ImageAnalysis.Builder()
             .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-            .build().also {
-                it.setAnalyzer(executor, ThrottledAnalyzer(frameCallback))
+
+        Camera2Interop.Extender(builder).setCameraDeviceStateCallback(object : CameraDevice.StateCallback() {
+            override fun onOpened(camera: CameraDevice) {}
+
+            override fun onDisconnected(camera: CameraDevice) {
+                handleCameraDisconnected(Exception("Camera device disconnected"))
             }
+
+            override fun onError(camera: CameraDevice, error: Int) {
+                Log.e(TAG, "Camera device error: $error")
+            }
+        })
+
+        imageAnalysis = builder.build().also {
+            it.setAnalyzer(executor, ThrottledAnalyzer(frameCallback))
+        }
 
         try {
             provider.unbindAll()
@@ -104,7 +120,10 @@ class CameraModule(
     }
 
     private fun handleCameraDisconnected(e: Exception) {
-        Log.w(TAG, "Camera disconnected: ${e.message}")
+        Log.w(
+            TAG,
+            "Camera disconnected (CameraAccessException.CAMERA_DISCONNECTED): ${e.message}"
+        )
         releaseResources()
         scheduleReconnect()
     }
