@@ -68,7 +68,7 @@ class CameraModule(
         val builder = ImageAnalysis.Builder()
             .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
 
-        Camera2Interop.Extender(builder).setCameraDeviceStateCallback(object : CameraDevice.StateCallback() {
+        Camera2Interop.Extender(builder).setDeviceStateCallback(object : CameraDevice.StateCallback() {
             override fun onOpened(camera: CameraDevice) {}
 
             override fun onDisconnected(camera: CameraDevice) {
