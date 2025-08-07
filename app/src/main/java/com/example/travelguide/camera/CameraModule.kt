@@ -16,6 +16,7 @@ import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.camera2.interop.Camera2Interop
+import androidx.camera.camera2.interop.ExperimentalCamera2Interop
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
@@ -59,6 +60,7 @@ class CameraModule(
     }
 
     /** Binds an [ImageAnalysis] use case that throttles frames to ~1 fps. */
+    @OptIn(ExperimentalCamera2Interop::class)
     private fun bindAnalysisUseCase() {
         val provider = cameraProvider ?: return
         val executor = cameraExecutor
