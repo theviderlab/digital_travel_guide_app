@@ -4,21 +4,19 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.hardware.camera2.CameraAccessException
 import android.hardware.camera2.CameraDevice
+import android.util.Log
 import android.os.Handler
 import android.os.Looper
-import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
-import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.camera2.interop.Camera2Interop
 import androidx.camera.camera2.interop.ExperimentalCamera2Interop
-import androidx.camera.view.PreviewView
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
@@ -28,12 +26,10 @@ import java.util.concurrent.Executors
  */
 class CameraModule(
     private val activity: ComponentActivity,
-    private val previewView: PreviewView,
-    private val frameCallback: ((ImageProxy) -> Unit)? = null
+    private val frameCallback: (ImageProxy) -> Unit
 ) {
     private var cameraProvider: ProcessCameraProvider? = null
     private var imageAnalysis: ImageAnalysis? = null
-    private var preview: Preview? = null
     // Executor used for image analysis; recreated as needed between start/stop cycles
     private var cameraExecutor: ExecutorService = Executors.newSingleThreadExecutor()
     private val handler = Handler(Looper.getMainLooper())
@@ -59,61 +55,47 @@ class CameraModule(
         val cameraProviderFuture = ProcessCameraProvider.getInstance(activity)
         cameraProviderFuture.addListener({
             cameraProvider = cameraProviderFuture.get()
-            bindCameraUseCases()
+            bindAnalysisUseCase()
         }, ContextCompat.getMainExecutor(activity))
     }
 
-    /** Binds [Preview] and optional [ImageAnalysis] use cases. */
+    /** Binds an [ImageAnalysis] use case that throttles frames to ~1 fps. */
     @OptIn(ExperimentalCamera2Interop::class)
-    private fun bindCameraUseCases() {
+    private fun bindAnalysisUseCase() {
         val provider = cameraProvider ?: return
         val executor = cameraExecutor
 
-        preview = Preview.Builder().build().also {
-            it.setSurfaceProvider(previewView.surfaceProvider)
-        }
+        val builder = ImageAnalysis.Builder()
+            .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
 
-        val analysis = if (frameCallback != null) {
-            val builder = ImageAnalysis.Builder()
-                .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+        Camera2Interop.Extender(builder).setDeviceStateCallback(object : CameraDevice.StateCallback() {
+            override fun onOpened(camera: CameraDevice) {}
 
-            Camera2Interop.Extender(builder).setDeviceStateCallback(object : CameraDevice.StateCallback() {
-                override fun onOpened(camera: CameraDevice) {}
-
-                override fun onDisconnected(camera: CameraDevice) {
-                    handleCameraDisconnected(Exception("Camera device disconnected"))
-                }
-
-                override fun onError(camera: CameraDevice, error: Int) {
-                    Log.e(TAG, "Camera device error: $error")
-                }
-            })
-
-            builder.build().also {
-                it.setAnalyzer(executor, ThrottledAnalyzer(frameCallback!!))
+            override fun onDisconnected(camera: CameraDevice) {
+                handleCameraDisconnected(Exception("Camera device disconnected"))
             }
-        } else {
-            null
+
+            override fun onError(camera: CameraDevice, error: Int) {
+                Log.e(TAG, "Camera device error: $error")
+            }
+        })
+
+        imageAnalysis = builder.build().also {
+            it.setAnalyzer(executor, ThrottledAnalyzer(frameCallback))
         }
 
         try {
             provider.unbindAll()
-            val useCases = mutableListOf(preview!!)
-            analysis?.let { useCases.add(it) }
-            provider.bindToLifecycle(
-                activity,
-                CameraSelector.DEFAULT_BACK_CAMERA,
-                *useCases.toTypedArray()
-            )
+            provider.bindToLifecycle(activity, CameraSelector.DEFAULT_BACK_CAMERA, imageAnalysis)
             reconnectAttempts = 0
         } catch (e: CameraAccessException) {
             if (e.reason == CameraAccessException.CAMERA_DISCONNECTED) {
                 handleCameraDisconnected(e)
             } else {
-                Log.e(TAG, "Failed to bind camera use cases", e)
+                Log.e(TAG, "Failed to bind analysis use case", e)
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to bind camera use cases", e)
+            Log.e(TAG, "Failed to bind analysis use case", e)
         }
     }
 
@@ -136,7 +118,6 @@ class CameraModule(
             }
             cameraProvider = null
             imageAnalysis = null
-            preview = null
         }
     }
 
@@ -172,7 +153,6 @@ class CameraModule(
             }
             cameraProvider = null
             imageAnalysis = null
-            preview = null
         }
     }
 
