@@ -120,8 +120,10 @@ class CameraModule(
     /** Stops the camera and releases resources. */
     fun stopCamera() {
         try {
-            imageAnalysis?.clearAnalyzer()
-            cameraProvider?.unbindAll()
+            activity.runOnUiThread {
+                imageAnalysis?.clearAnalyzer()
+                cameraProvider?.unbindAll()
+            }
         } catch (e: CameraAccessException) {
             if (e.reason == CameraAccessException.CAMERA_DISCONNECTED) {
                 handleCameraDisconnected(e)
@@ -145,8 +147,10 @@ class CameraModule(
             TAG,
             "Camera disconnected (CameraAccessException.CAMERA_DISCONNECTED): ${e.message}"
         )
-        releaseResources()
-        scheduleReconnect()
+        activity.runOnUiThread {
+            releaseResources()
+            scheduleReconnect()
+        }
     }
 
     private fun scheduleReconnect() {
@@ -162,8 +166,10 @@ class CameraModule(
 
     private fun releaseResources() {
         try {
-            imageAnalysis?.clearAnalyzer()
-            cameraProvider?.unbindAll()
+            activity.runOnUiThread {
+                imageAnalysis?.clearAnalyzer()
+                cameraProvider?.unbindAll()
+            }
         } catch (e: Exception) {
             Log.w(TAG, "Error releasing camera resources: ${e.message}")
         } finally {
