@@ -4,20 +4,23 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Bundle
 import androidx.activity.ComponentActivity
-import androidx.camera.view.PreviewView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import com.example.travelguide.camera.CameraModule
+import android.opengl.GLSurfaceView
+import com.example.travelguide.ar.ARModule
+import com.example.travelguide.inference.InferenceModule
 
 class MainActivity : ComponentActivity() {
-    private lateinit var cameraModule: CameraModule
-    private lateinit var previewView: PreviewView
+    private lateinit var glSurfaceView: GLSurfaceView
+    private lateinit var arModule: ARModule
+    private lateinit var inferenceModule: InferenceModule
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-        previewView = findViewById(R.id.previewView)
-        cameraModule = CameraModule(this, previewView)
+        glSurfaceView = findViewById(R.id.glSurfaceView)
+        inferenceModule = InferenceModule(this)
+        arModule = ARModule(glSurfaceView, inferenceModule)
     }
 
     override fun onResume() {
@@ -25,19 +28,20 @@ class MainActivity : ComponentActivity() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
             == PackageManager.PERMISSION_GRANTED
         ) {
-            cameraModule.startCamera()
+            arModule.initializeIfPermitted(this)
+            arModule.resume()
         } else {
             ActivityCompat.requestPermissions(
                 this,
                 arrayOf(Manifest.permission.CAMERA),
-                CameraModule.REQUEST_CODE_CAMERA_PERMISSION
+                REQUEST_CODE_CAMERA_PERMISSION
             )
         }
     }
 
     override fun onPause() {
         super.onPause()
-        cameraModule.stopCamera()
+        arModule.pause()
     }
 
     override fun onRequestPermissionsResult(
@@ -46,12 +50,17 @@ class MainActivity : ComponentActivity() {
         grantResults: IntArray
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == CameraModule.REQUEST_CODE_CAMERA_PERMISSION &&
+        if (requestCode == REQUEST_CODE_CAMERA_PERMISSION &&
             grantResults.isNotEmpty() &&
             grantResults[0] == PackageManager.PERMISSION_GRANTED
         ) {
-            cameraModule.startCamera()
+            arModule.initializeIfPermitted(this)
+            arModule.resume()
         }
+    }
+
+    companion object {
+        private const val REQUEST_CODE_CAMERA_PERMISSION = 1001
     }
 }
 

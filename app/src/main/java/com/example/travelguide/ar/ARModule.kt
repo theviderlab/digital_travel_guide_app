@@ -1,19 +1,28 @@
 package com.example.travelguide.ar
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.ImageFormat
+import android.graphics.Rect
+import android.graphics.YuvImage
+import android.media.Image
 import android.opengl.GLES11Ext
 import android.opengl.GLES20
 import android.opengl.GLSurfaceView
 import android.opengl.Matrix
 import com.example.travelguide.inference.Detection
+import com.example.travelguide.inference.InferenceModule
 import com.google.ar.core.*
 import com.google.ar.core.exceptions.CameraNotAvailableException
+import com.google.ar.core.exceptions.NotYetAvailableException
 import com.google.ar.core.exceptions.UnavailableException
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.acos
 import kotlin.math.min
 import kotlin.math.sqrt
+import java.io.ByteArrayOutputStream
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
 
@@ -22,7 +31,8 @@ import javax.microedition.khronos.opengles.GL10
  * allows placing simple markers based on model detections.
  */
 class ARModule(
-    private val surfaceView: GLSurfaceView
+    private val surfaceView: GLSurfaceView,
+    private val inference: InferenceModule? = null
 ) : GLSurfaceView.Renderer {
     private var session: Session? = null
     private var frame: Frame? = null
@@ -32,6 +42,7 @@ class ARModule(
     private var lastPose: Pose? = null
     private val backgroundRenderer = BackgroundRenderer()
     private var pendingResume = false
+    private var lastInferenceTime = 0L
 
     init {
         surfaceView.setEGLContextClientVersion(3)
@@ -86,6 +97,7 @@ class ARModule(
         }
         this.frame = frame
         backgroundRenderer.draw(frame)
+        processFrameForInference(frame)
         val pose = frame.camera.pose
         if (hasMovedAbruptly(pose)) {
             lastPose = pose
@@ -95,6 +107,27 @@ class ARModule(
         frame.camera.getProjectionMatrix(projectionMatrix, 0, 0.1f, 100f)
         frame.camera.getViewMatrix(viewMatrix, 0)
         anchors.forEach { it.draw(viewMatrix, projectionMatrix) }
+    }
+
+    private fun processFrameForInference(frame: Frame) {
+        val inference = inference ?: return
+        val now = System.currentTimeMillis()
+        if (now - lastInferenceTime < 1000) return
+        val image = try {
+            frame.acquireCameraImage()
+        } catch (_: NotYetAvailableException) {
+            return
+        } catch (_: Exception) {
+            return
+        }
+        try {
+            val bitmap = image.toBitmap()
+            val detections = inference.runInference(bitmap)
+            placeMarkers(detections)
+        } finally {
+            image.close()
+        }
+        lastInferenceTime = now
     }
 
     /**
@@ -153,6 +186,24 @@ class ARModule(
         val dot = q1[0] * q2[0] + q1[1] * q2[1] + q1[2] * q2[2] + q1[3] * q2[3]
         val angle = (2 * acos(min(1f, abs(dot))) * 180f / PI.toFloat())
         return dist > 0.1f || angle > 10f
+    }
+
+    private fun Image.toBitmap(): Bitmap {
+        val yBuffer = planes[0].buffer
+        val uBuffer = planes[1].buffer
+        val vBuffer = planes[2].buffer
+        val ySize = yBuffer.remaining()
+        val uSize = uBuffer.remaining()
+        val vSize = vBuffer.remaining()
+        val nv21 = ByteArray(ySize + uSize + vSize)
+        yBuffer.get(nv21, 0, ySize)
+        vBuffer.get(nv21, ySize, vSize)
+        uBuffer.get(nv21, ySize + vSize, uSize)
+        val yuvImage = YuvImage(nv21, ImageFormat.NV21, width, height, null)
+        val out = ByteArrayOutputStream()
+        yuvImage.compressToJpeg(Rect(0, 0, width, height), 100, out)
+        val imageBytes = out.toByteArray()
+        return BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
     }
 
     private class Marker(val anchor: Anchor, val label: String) {
