@@ -2,11 +2,12 @@ package com.example.travelguide
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.opengl.GLSurfaceView
 import android.os.Bundle
 import androidx.activity.ComponentActivity
-import androidx.core.app.ActivityCompat
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
-import android.opengl.GLSurfaceView
 import com.example.travelguide.ar.ARModule
 import com.example.travelguide.inference.InferenceModule
 
@@ -14,6 +15,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var glSurfaceView: GLSurfaceView
     private lateinit var arModule: ARModule
     private lateinit var inferenceModule: InferenceModule
+    private lateinit var requestPermissionLauncher: ActivityResultLauncher<String>
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -21,6 +23,14 @@ class MainActivity : ComponentActivity() {
         glSurfaceView = findViewById(R.id.glSurfaceView)
         inferenceModule = InferenceModule(this)
         arModule = ARModule(glSurfaceView, inferenceModule)
+
+        requestPermissionLauncher =
+            registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+                if (isGranted) {
+                    arModule.initializeIfPermitted(this)
+                    arModule.resume()
+                }
+            }
     }
 
     override fun onResume() {
@@ -31,11 +41,7 @@ class MainActivity : ComponentActivity() {
             arModule.initializeIfPermitted(this)
             arModule.resume()
         } else {
-            ActivityCompat.requestPermissions(
-                this,
-                arrayOf(Manifest.permission.CAMERA),
-                REQUEST_CODE_CAMERA_PERMISSION
-            )
+            requestPermissionLauncher.launch(Manifest.permission.CAMERA)
         }
     }
 
@@ -43,24 +49,4 @@ class MainActivity : ComponentActivity() {
         super.onPause()
         arModule.pause()
     }
-
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<out String>,
-        grantResults: IntArray
-    ) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == REQUEST_CODE_CAMERA_PERMISSION &&
-            grantResults.isNotEmpty() &&
-            grantResults[0] == PackageManager.PERMISSION_GRANTED
-        ) {
-            arModule.initializeIfPermitted(this)
-            arModule.resume()
-        }
-    }
-
-    companion object {
-        private const val REQUEST_CODE_CAMERA_PERMISSION = 1001
-    }
 }
-
