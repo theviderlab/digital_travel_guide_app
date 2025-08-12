@@ -13,6 +13,7 @@ import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
 import androidx.camera.core.Preview
+import androidx.camera.core.UseCase
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.camera2.interop.Camera2Interop
 import androidx.camera.camera2.interop.ExperimentalCamera2Interop
@@ -98,7 +99,7 @@ class CameraModule(
 
         try {
             provider.unbindAll()
-            val useCases = mutableListOf(preview!!)
+            val useCases = mutableListOf<UseCase>(preview!!)
             analysis?.let { useCases.add(it) }
             provider.bindToLifecycle(
                 activity,
