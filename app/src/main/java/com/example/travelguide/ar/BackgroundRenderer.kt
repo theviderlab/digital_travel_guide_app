@@ -97,11 +97,19 @@ class BackgroundRenderer {
 
     fun draw(frame: Frame) {
         if (textureId == -1 || program == 0) return
-        val transformed = FloatArray(quadTexCoords.size)
-        frame.transformDisplayUvCoords(quadTexCoords, transformed)
+        val transformedBuffer = ByteBuffer.allocateDirect(quadTexCoords.size * 4)
+            .order(ByteOrder.nativeOrder())
+            .asFloatBuffer()
         quadTexCoordBuffer.apply {
             clear()
-            put(transformed)
+            put(quadTexCoords)
+            position(0)
+        }
+        frame.transformDisplayUvCoords(quadTexCoordBuffer, transformedBuffer)
+        transformedBuffer.position(0)
+        quadTexCoordBuffer.apply {
+            clear()
+            put(transformedBuffer)
             position(0)
         }
         GLES20.glDepthMask(false)
