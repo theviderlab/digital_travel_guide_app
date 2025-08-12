@@ -89,7 +89,7 @@ class CameraModule(
             })
 
             builder.build().also {
-                it.setAnalyzer(executor, ThrottledAnalyzer(frameCallback!!))
+                it.setAnalyzer(executor, ThrottledAnalyzer(frameCallback))
             }
         } else {
             null
