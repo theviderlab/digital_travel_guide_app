@@ -99,7 +99,8 @@ class InferenceModule(context: Context) {
                     embeddingInput to embeddings
                 )
             ).use { result ->
-                val boxes = result[0].value as Array<FloatArray>
+                val boxes = result[0].value as? Array<FloatArray> ?: return emptyList()
+                // The model guarantees that the first output contains an array of bounding boxes.
                 val classes = result[2].value as LongArray
 
                 val count = min(boxes.size, classes.size)
