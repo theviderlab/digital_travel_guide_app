@@ -2,6 +2,7 @@ package com.example.travelguide.ar
 
 import android.opengl.GLES11Ext
 import android.opengl.GLES20
+import com.google.ar.core.Coordinates2d
 import com.google.ar.core.Frame
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -105,7 +106,12 @@ class BackgroundRenderer {
             put(quadTexCoords)
             position(0)
         }
-        frame.transformDisplayUvCoords(quadTexCoordBuffer, transformedBuffer)
+        frame.transformCoordinates2d(
+            Coordinates2d.TEXTURE_NORMALIZED,
+            quadTexCoordBuffer,
+            Coordinates2d.DISPLAY_NORMALIZED,
+            transformedBuffer
+        )
         transformedBuffer.position(0)
         quadTexCoordBuffer.apply {
             clear()
