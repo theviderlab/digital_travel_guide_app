@@ -16,6 +16,7 @@ import androidx.camera.core.Preview
 import androidx.camera.core.UseCase
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.camera2.interop.Camera2Interop
+import androidx.camera.camera2.interop.ExperimentalCamera2Interop
 import androidx.camera.view.PreviewView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -26,6 +27,7 @@ import java.util.concurrent.Executors
  * Utility class that configures the rear camera using CameraX and exposes
  * frames roughly once per second via [frameCallback].
  */
+@Suppress("unused")
 class CameraModule(
     private val activity: ComponentActivity,
     private val previewView: PreviewView,
@@ -40,7 +42,7 @@ class CameraModule(
     private var reconnectAttempts = 0
 
     /** Starts the rear camera if permissions are granted. */
-    fun startCamera() {
+    private fun startCamera() {
         // Re-create the executor if it was previously shut down
         if (cameraExecutor.isShutdown) {
             cameraExecutor = Executors.newSingleThreadExecutor()
@@ -64,12 +66,13 @@ class CameraModule(
     }
 
     /** Binds [Preview] and optional [ImageAnalysis] use cases. */
+    @OptIn(ExperimentalCamera2Interop::class)
     private fun bindCameraUseCases() {
         val provider = cameraProvider ?: return
         val executor = cameraExecutor
 
         preview = Preview.Builder().build().also {
-            it.setSurfaceProvider(previewView.surfaceProvider)
+            it.surfaceProvider = previewView.surfaceProvider
         }
 
         val analysis = if (frameCallback != null) {
@@ -117,6 +120,7 @@ class CameraModule(
     }
 
     /** Stops the camera and releases resources. */
+    @Suppress("unused")
     fun stopCamera() {
         try {
             activity.runOnUiThread {
