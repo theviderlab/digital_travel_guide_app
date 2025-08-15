@@ -85,6 +85,9 @@ class ARModule(
         }
     }
 
+    /** Returns true if an ARCore [Session] has been created. */
+    fun hasSession(): Boolean = session != null
+
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
         GLES20.glClearColor(0f, 0f, 0f, 1f)
         backgroundRenderer.createOnGlThread()

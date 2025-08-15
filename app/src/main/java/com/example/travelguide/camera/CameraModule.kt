@@ -41,6 +41,10 @@ class CameraModule(
     private val handler = Handler(Looper.getMainLooper())
     private var reconnectAttempts = 0
 
+    init {
+        startCamera()
+    }
+
     /** Starts the rear camera if permissions are granted. */
     private fun startCamera() {
         // Re-create the executor if it was previously shut down

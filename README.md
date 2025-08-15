@@ -52,3 +52,4 @@ app/
 ## Notas
 - El rendimiento depende de las capacidades del dispositivo y del modelo ONNX utilizado.
 - Para reemplazar el modelo basta con actualizar `pipeline.onnx` y recompilar.
+- Si ARCore no está disponible, se ofrece un modo de respaldo con vista de cámara básica sin realidad aumentada.
