@@ -1,5 +1,6 @@
 package com.example.travelguide.ar
 
+import android.app.Activity
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -17,6 +18,8 @@ import com.google.ar.core.*
 import com.google.ar.core.exceptions.CameraNotAvailableException
 import com.google.ar.core.exceptions.NotYetAvailableException
 import com.google.ar.core.exceptions.UnavailableException
+import android.util.Log
+import android.widget.Toast
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.acos
@@ -55,12 +58,29 @@ class ARModule(
      */
     fun initializeIfPermitted(context: Context) {
         if (session != null) return
+        val availability = ArCoreApk.getInstance().checkAvailability(context)
+        if (availability != ArCoreApk.Availability.INSTALLED) {
+            if (context is Activity) {
+                try {
+                    ArCoreApk.getInstance().requestInstall(context, true)
+                } catch (e: UnavailableException) {
+                    Log.e("ARModule", "ARCore install request failed", e)
+                }
+            }
+            Toast.makeText(
+                context,
+                "Instala o actualiza ARCore para continuar",
+                Toast.LENGTH_LONG
+            ).show()
+            return
+        }
         session = try {
             Session(context).apply {
                 val config = Config(this)
                 configure(config)
             }
         } catch (e: UnavailableException) {
+            Log.e("ARModule", "Failed to create ARCore session", e)
             null
         }
     }
