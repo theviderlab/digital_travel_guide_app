@@ -99,7 +99,13 @@ class InferenceModule(context: Context) {
                     embeddingInput to embeddings
                 )
             ).use { result ->
-                val boxes = result[0].value as? Array<FloatArray> ?: return emptyList()
+                val rawBoxes = result[0].value
+                val boxes = if (rawBoxes is Array<*> && rawBoxes.all { it is FloatArray }) {
+                    @Suppress("UNCHECKED_CAST")
+                    rawBoxes as Array<FloatArray>
+                } else {
+                    return emptyList()
+                }
                 // The model guarantees that the first output contains an array of bounding boxes.
                 val classes = result[2].value as LongArray
 

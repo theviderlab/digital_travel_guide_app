@@ -7,7 +7,8 @@
     <uses-feature android:name="android.hardware.camera.ar" />
     <uses-feature android:name="android.hardware.camera" />
 
-    <application>
+    <application
+        android:icon="@drawable/ic_launcher">
         <meta-data
             android:name="com.google.ar.core"
             android:value="required" />
