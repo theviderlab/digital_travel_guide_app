@@ -109,7 +109,7 @@ class BackgroundRenderer {
         frame.transformCoordinates2d(
             Coordinates2d.TEXTURE_NORMALIZED,
             quadTexCoordBuffer,
-            Coordinates2d.DISPLAY_NORMALIZED,
+            Coordinates2d.VIEW_NORMALIZED,
             transformedBuffer
         )
         transformedBuffer.position(0)
